@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "start": "node index.js",
     "debug": "node --nolazy --inspect-brk=9229 index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -11,8 +12,10 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
+    "commander": "^2.11.0",
     "csv-write-stream": "^2.0.0",
     "dotenv": "^4.0.0",
+    "loglevel": "^1.5.1",
     "puppeteer": "git+https://github.com/GoogleChrome/puppeteer.git",
     "require-environment-variables": "^1.1.2"
   }

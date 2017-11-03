@@ -1,26 +1,30 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
 const csvWriter = require('csv-write-stream');
+const log = require('loglevel');
+const program = require('commander');
 
 require('dotenv').config();
 require('require-environment-variables')(['BASE_URL', 'PROJECTS_URL', 'AUTH_USER', 'AUTH_PASS']);
 
-async function getProjects() {
+async function getProjects(outFile, options) {
 	const projektSelector = '#ctl00_cphContent_cboProjects_DDD_L_LBT > tbody > tr';
 	const projektInputSelector = '#ctl00_cphContent_cboProjects_I';
 	const ladeElementSelector = '#ctl00_cphContent_cboProjects_LPV';
 	const erfassungSelector = '#ctl00_cphContent_cboPSItem_0_DDD_L_LBT > tbody > tr';
 
+	log.trace('Setting up csv writer.');
 	const writer = csvWriter({
 		sendHeaders: true,
 		separator: ';'
 	});
-	writer.pipe(fs.createWriteStream(process.env.PROJECT_OUTPUT_NAME || 'out.csv'));
+	writer.pipe(fs.createWriteStream(outFile));
 	
+	log.trace('Setting up browser.');
 	const browser = await puppeteer.launch({
-		headless: false,
+		headless: !options.interactiveMode,
 		timeout: 60000,
-		userDataDir: 'D:/test/User Data',
+		userDataDir: options.userDataDir,
 		args: ['--no-sandbox', '--disable-setuid-sandbox']
 	});
 	const page = await browser.newPage();
@@ -29,7 +33,7 @@ async function getProjects() {
 		height: 786
 	});
 
-	console.debug('Navigate to mportal');
+	log.trace('Navigate to mportal');
 	page.goto(process.env.BASE_URL, {
 		waitUntil: 'domcontentloaded'
 	});
@@ -41,68 +45,104 @@ async function getProjects() {
 		password:process.env.AUTH_PASS
 	});
 
-	console.debug('Navigate to project times');
+	log.trace('Navigate to project times');
 	await page.goto(process.env.BASE_URL + process.env.PROJECTS_URL, {
 		waitUntil: 'domcontentloaded'
 	});
 
-	console.debug('Getting available projects');
+	log.trace('Getting available projects');
 	const projects = await page.evaluate((selector) => {
 		var tds = Array.from(document.querySelectorAll(selector));
 		return tds.map(td => td.textContent.trim());
 	}, projektSelector);
-	console.log(projects);
+	log.info(projects);
 
 	for (var i = 0, len = projects.length; i < len; i++) {
 		await page.waitFor(2000);
-		console.debug('Selecting project ' + i + ' of ' + len);
+		log.trace('Selecting project ' + i + ' of ' + len);
 
-		console.debug('Focusing project input field');
+		log.trace('Focusing project input field');
 		const projectInput = await page.$(projektInputSelector);
 		projectInput.focus();
 
-		console.debug('Selecting all text');
+		log.trace('Selecting all text');
 		await page.keyboard.down('Control');
 		await page.keyboard.down('A');
 
 		await page.keyboard.up('A');
 		await page.keyboard.up('Control');
 
-		console.debug('Typing project name: ' + projects[i]);
+		log.trace('Typing project name: ' + projects[i]);
 		projectInput.type(projects[i]);
 
-		console.debug('Waiting for loading elements to be added');
+		log.trace('Waiting for loading elements to be added');
 		await page.waitForSelector(ladeElementSelector, {
 			visible: true
 		});
 
-		console.debug('Waiting for loading elements to be removed');
+		log.trace('Waiting for loading elements to be removed');
 		await page.waitForSelector(ladeElementSelector, {
 			hidden: true
 		});
 
-		console.debug('Selecting project');
+		log.trace('Selecting project');
 		await projectInput.press('Enter');
 
-		console.debug('Waiting for navigation');
+		log.trace('Waiting for navigation');
 		await page.waitForNavigation({
 			waitUntil: 'domcontentloaded'
 		});
 
-		console.debug('Getting available registrations for this project');
+		log.trace('Getting available registrations for this project');
 		const registrations = await page.evaluate((selector) => {
 			var tds = Array.from(document.querySelectorAll(selector));
 			return tds.map(td => td.textContent.trim());
 		}, erfassungSelector);
-		console.log(registrations);
+		log.info(registrations);
 
-		console.debug('Writing data to csv');
+		log.trace('Writing data to csv');
 		writer.write({Project: projects[i], Registrations: registrations});
 	}
 
-	console.log('Done.');
+	log.info('Done.');
 	writer.end();
+	log.trace('Closed csv stream.');
 	browser.close();
+	log.trace('Closed browser.');
 }
 
-getProjects();
+async function bookProjects(inFile) {
+
+}
+
+log.setLevel('warn');
+program	.version('0.0.1');
+
+program
+	.command('getProjects <path>')
+	.description('Gets all projects and its registrations and writes them in .csv format to <path>.')
+	.option('-v, --verbose', 'Enables verbose logging.')
+	.option('-t, --trace', 'Enables trace logging.')
+	.option('-i, --interactive-mode', 'Shows the browser window.')
+	.option('-u, --user-data-dir <userDataDir>', 'Specifies the user data dir for the chromium.')
+	.action(function (path, options) {
+		if (options.verbose) {
+			log.setLevel('info');
+			log.info('Enabled verbose logging.');
+		}
+		if (options.trace) {
+			log.enableAll();
+			log.trace('Enabled trace logging.');
+		}
+		if (options.interactiveMode) {
+			log.trace('Running the browser in interactive mode.');
+		}
+		if (options.userDataDir) {
+			log.trace('UserDataDir is: ' + options.userDataDir);
+		}
+		log.info('Getting projects and their registrations');
+		log.info('and writing them to: ' + path);
+		getProjects(path, options);
+	});
+
+program.parse(process.argv);
