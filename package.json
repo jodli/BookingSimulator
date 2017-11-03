@@ -13,8 +13,8 @@
   "private": true,
   "dependencies": {
     "commander": "^2.11.0",
-    "csv-write-stream": "^2.0.0",
     "dotenv": "^4.0.0",
+    "fast-csv": "^2.4.1",
     "loglevel": "^1.5.1",
     "puppeteer": "git+https://github.com/GoogleChrome/puppeteer.git",
     "require-environment-variables": "^1.1.2"
