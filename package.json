@@ -1,0 +1,19 @@
+{
+  "name": "sage-bookingsimulator",
+  "version": "0.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "debug": "node --nolazy --inspect-brk=9229 index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "jodli",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "csv-write-stream": "^2.0.0",
+    "dotenv": "^4.0.0",
+    "puppeteer": "git+https://github.com/GoogleChrome/puppeteer.git",
+    "require-environment-variables": "^1.1.2"
+  }
+}
