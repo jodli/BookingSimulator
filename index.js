@@ -139,6 +139,7 @@ async function getProjects(outFile, options) {
 	log.info('Done.');
 	writer.end();
 	log.info('Closed csv stream.');
+	await page.waitFor(10000);
 	browser.close();
 	log.info('Closed browser.');
 }
@@ -151,7 +152,9 @@ async function bookProjects(inFile, options) {
 	const csvStream = csvReader.fromStream(
 		fs.createReadStream(inFile), {
 			delimiter: ';',
-			headers: true
+			headers: true,
+			comment: '#',
+			ignoreEmpty: true
 		}
 	).on('data', async (data) => {
 		log.info(data);
@@ -221,7 +224,8 @@ async function bookProjects(inFile, options) {
 	}
 
 	log.info('Done.');
-	//browser.close();
+	await page.waitFor(10000);
+	browser.close();
 	log.info('Closed browser.');
 }
 
