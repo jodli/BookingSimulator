@@ -181,6 +181,7 @@ async function bookProjects(inFile, options) {
 
 		log.info('Setting project to', element.Project);
 		const projectInput = await focusInputField(page, projektInputSelector);
+		await page.waitFor(1000);
 		await selectAllText(page);
 		typeInInputField(projectInput, element.Project);
 		await waitForLoadingElements(page);
@@ -190,6 +191,7 @@ async function bookProjects(inFile, options) {
 
 		log.info('Setting registration to', element.Registration);
 		const registrationInput = await focusInputField(page, projektErfassungSelector);
+		await page.waitFor(1000);
 		await selectAllText(page);
 		typeInInputField(registrationInput, element.Registration);
 		await page.waitFor(2000);
@@ -198,6 +200,7 @@ async function bookProjects(inFile, options) {
 
 		log.info('Setting date to', element.Date);
 		const dateInput = await focusInputField(page, datumSelector);
+		await page.waitFor(1000);
 		await selectAllText(page);
 		typeInInputField(dateInput, element.Date);
 		await page.waitFor(2000);
@@ -221,6 +224,11 @@ async function bookProjects(inFile, options) {
 		await waitForNavigation(page);
 
 		log.info('Successfully booked entry:', element);
+
+		log.info('Navigate to project times');
+		await page.goto(process.env.BASE_URL + process.env.PROJECTS_URL, {
+			waitUntil: 'domcontentloaded'
+		});
 	}
 
 	log.info('Done.');
