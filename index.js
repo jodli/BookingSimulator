@@ -6,6 +6,11 @@ const program = require('commander');
 require('dotenv').config();
 require('require-environment-variables')(['BASE_URL', 'PROJECTS_URL', 'AUTH_USER', 'AUTH_PASS']);
 
+module.exports = {
+	getProjects: getProjects,
+	bookProjects: bookProjects
+};
+
 async function selectFirstEntryInDropDown(projectInput) {
 	log.info('Selecting first entry in drop down menu.');
 	await projectInput.press('Enter');
@@ -72,12 +77,15 @@ async function startAndNavigateToProjectTimes(options) {
 	page.goto(process.env.BASE_URL, {
 		waitUntil: 'domcontentloaded'
 	});
-	await page.waitFor(10000);
+	await page.waitFor(5000);
 
+	//log.info('Authenticating for ' + process.env.AUTH_USER);
 	//const responseAuth = await page.authenticate({
 	//	username: process.env.AUTH_USER,
 	//	password: process.env.AUTH_PASS
 	//});
+	//console.info(responseAuth);
+	await page.waitFor(10000);
 
 	log.info('Navigate to project times');
 	await page.goto(process.env.BASE_URL + process.env.PROJECTS_URL, {
@@ -101,6 +109,8 @@ async function getProjects(outFile, options) {
 	writer.pipe(fs.createWriteStream(outFile));
 
 	const { page, browser } = await startAndNavigateToProjectTimes(options);
+
+	await page.waitFor(5000);
 
 	log.info('Getting available projects');
 	const projects = await page.evaluate((selector) => {
