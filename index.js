@@ -2,6 +2,7 @@ const puppeteer = require('puppeteer');
 const fs = require('fs');
 const log = require('loglevel');
 const program = require('commander');
+const dateFormat = require('dateformat');
 
 require('dotenv').config();
 require('require-environment-variables')(['BASE_URL', 'PROJECTS_URL', 'AUTH_USER', 'AUTH_PASS']);
@@ -214,8 +215,12 @@ async function bookProjects(inFile, options) {
 		await selectAllText(page);
 		typeInInputField(dateInput, element.Date);
 		await page.waitFor(2000);
-		await selectFirstEntryInDropDown(dateInput);
-		await waitForNavigation(page);
+		if (dateFormat(new Date(), "dd.mm.yyyy") !== element.Date) {
+			await selectFirstEntryInDropDown(dateInput);
+			await waitForNavigation(page);
+		} else {
+			log.info('Skipping date reload because booking is today.');
+		}
 
 		log.info('Setting duration to', element.Duration);
 		const durationInput = await focusInputField(page, dauerSelector);
