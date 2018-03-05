@@ -3,14 +3,16 @@ const fs = require('fs');
 const log = require('loglevel');
 const program = require('commander');
 const dateFormat = require('dateformat');
+const events = require('events');
 
 require('dotenv').config();
 require('require-environment-variables')(['BASE_URL', 'PROJECTS_URL', 'AUTH_USER', 'AUTH_PASS']);
 
-module.exports = {
-	getProjects: getProjects,
-	bookProjects: bookProjects
-};
+exports = module.exports = BookingSimulator;
+
+function BookingSimulator() {
+	events.EventEmitter.call(this);
+}
 
 async function selectFirstEntryInDropDown(projectInput) {
 	log.info('Selecting first entry in drop down menu.');
@@ -95,7 +97,7 @@ async function startAndNavigateToProjectTimes(options) {
 	return { page, browser };
 }
 
-async function getProjects(outFile, options) {
+BookingSimulator.prototype.getProjects = async function (outFile, options) {
 	const csvWriter = require('csv-write-stream');
 
 	const projektSelector = '#ctl00_cphContent_cboProjects_DDD_L_LBT > tbody > tr';
@@ -119,6 +121,7 @@ async function getProjects(outFile, options) {
 		return tds.map(td => td.textContent.trim());
 	}, projektSelector);
 	log.info(projects);
+	this.emit('start', projects.length);
 
 	for (var i = 0, len = projects.length; i < len; i++) {
 		await page.waitFor(2000);
@@ -143,19 +146,22 @@ async function getProjects(outFile, options) {
 		}, erfassungSelector);
 		log.info(registrations);
 
+		this.emit('data', projects[i], registrations);
+
 		log.info('Writing data to csv');
 		writer.write({ Project: projects[i], Registrations: registrations });
 	}
 
 	log.info('Done.');
 	writer.end();
+	this.emit('end');
 	log.info('Closed csv stream.');
 	await page.waitFor(10000);
 	browser.close();
 	log.info('Closed browser.');
 }
 
-async function bookProjects(inFile, options) {
+BookingSimulator.prototype.bookProjects = async function (inFile, options) {
 	const csvReader = require('fast-csv');
 
 	let bookingPositions = [];
@@ -239,6 +245,7 @@ async function bookProjects(inFile, options) {
 		await waitForNavigation(page);
 
 		log.info('Successfully booked entry:', element);
+		this.emit('data', element);
 
 		log.info('Navigate to project times');
 		await page.goto(process.env.BASE_URL + process.env.PROJECTS_URL, {
@@ -247,10 +254,13 @@ async function bookProjects(inFile, options) {
 	}
 
 	log.info('Done.');
+	this.emit('end');
 	await page.waitFor(10000);
 	browser.close();
 	log.info('Closed browser.');
 }
+
+BookingSimulator.prototype.__proto__ = events.EventEmitter.prototype;
 
 log.setLevel('warn');
 program.version('0.1.0');
@@ -278,7 +288,8 @@ program
 			log.info('UserDataDir is: ' + options.userDataDir);
 		}
 		log.info('Getting projects and their registrations and writing them to: ' + path);
-		getProjects(path, options);
+		const bookingSimulator = new BookingSimulator();
+		bookingSimulator.getProjects(path, options);
 	});
 
 program
@@ -304,7 +315,8 @@ program
 			log.info('UserDataDir is: ' + options.userDataDir);
 		}
 		log.info('Booking all positions specified in: ' + path);
-		bookProjects(path, options);
+		const bookingSimulator = new BookingSimulator();
+		bookingSimulator.bookProjects(path, options);
 	});
 
 program.parse(process.argv);
