@@ -72,28 +72,32 @@ async function startAndNavigateToProjectTimes(options) {
 
 	const page = await browser.newPage();
 	await page.setViewport({
-		width: 1024,
-		height: 786
+		width: 1280,
+		height: 1024
+	});
+	page.goto(process.env.BASE_URL, {
+		waitUntil: 'domcontentloaded'
+	});
+
+	await page.waitFor(5000);
+	log.info('Authenticating for ' + process.env.AUTH_USER);
+	await page.authenticate({
+		username: process.env.AUTH_USER,
+		password: process.env.AUTH_PASS
 	});
 
 	log.info('Navigate to mportal');
 	page.goto(process.env.BASE_URL, {
 		waitUntil: 'domcontentloaded'
 	});
-	await page.waitFor(5000);
-
-	//log.info('Authenticating for ' + process.env.AUTH_USER);
-	//const responseAuth = await page.authenticate({
-	//	username: process.env.AUTH_USER,
-	//	password: process.env.AUTH_PASS
-	//});
-	//console.info(responseAuth);
-	await page.waitFor(10000);
+	await page.waitFor(1000);
 
 	log.info('Navigate to project times');
 	await page.goto(process.env.BASE_URL + process.env.PROJECTS_URL, {
 		waitUntil: 'domcontentloaded'
 	});
+
+	await page.waitFor(1000);
 	return { page, browser };
 }
 
@@ -123,9 +127,9 @@ BookingSimulator.prototype.getProjects = async function (outFile, options) {
 	log.info(projects);
 	this.emit('start', projects.length);
 
-	for (var i = 0, len = projects.length; i < len; i++) {
+	for (var i = 0; i < projects.length; i++) {
 		await page.waitFor(2000);
-		log.info('Selecting project ' + i + ' of ' + len);
+		log.info('Selecting project ' + (i + 1) + ' of ' + projects.length);
 
 		const projectInput = await focusInputField(page, projektInputSelector);
 
@@ -145,11 +149,12 @@ BookingSimulator.prototype.getProjects = async function (outFile, options) {
 			return tds.map(td => td.textContent.trim());
 		}, erfassungSelector);
 		log.info(registrations);
-
 		this.emit('data', projects[i], registrations);
 
+		if (registrations.length > 0) {
 		log.info('Writing data to csv');
 		writer.write({ Project: projects[i], Registrations: registrations });
+	}
 	}
 
 	log.info('Done.');
@@ -263,7 +268,7 @@ BookingSimulator.prototype.bookProjects = async function (inFile, options) {
 BookingSimulator.prototype.__proto__ = events.EventEmitter.prototype;
 
 log.setLevel('warn');
-program.version('0.1.0');
+program.version('0.2.0');
 
 program
 	.command('getProjects <path>')
