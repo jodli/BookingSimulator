@@ -1,5 +1,6 @@
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const path = require('path');
 const log = require('loglevel');
 const program = require('commander');
 const dateFormat = require('dateformat');
@@ -61,6 +62,10 @@ async function selectAllText(page) {
 	await page.keyboard.up('Control');
 }
 
+async function createScreenshot(page, outFile) {
+	await page.screenshot({ path: outFile });
+}
+
 async function startAndNavigateToProjectTimes(options) {
 	log.info('Setting up browser.');
 	const browser = await puppeteer.launch({
@@ -73,7 +78,7 @@ async function startAndNavigateToProjectTimes(options) {
 	const page = await browser.newPage();
 	await page.setViewport({
 		width: 1280,
-		height: 1024
+		height: 1280
 	});
 	page.goto(process.env.BASE_URL, {
 		waitUntil: 'domcontentloaded'
@@ -118,6 +123,7 @@ BookingSimulator.prototype.getProjects = async function (outFile, options) {
 	const { page, browser } = await startAndNavigateToProjectTimes(options);
 
 	await page.waitFor(5000);
+	await createScreenshot(page, path.join(options.screenshotDir, 'getting_start.png'));
 
 	log.info('Getting available projects');
 	const projects = await page.evaluate((selector) => {
@@ -150,18 +156,19 @@ BookingSimulator.prototype.getProjects = async function (outFile, options) {
 		}, erfassungSelector);
 		log.info(registrations);
 		this.emit('data', projects[i], registrations);
+		await createScreenshot(page, path.join(options.screenshotDir, 'getting_' + (i + 1) + '.png'));
 
 		if (registrations.length > 0) {
-		log.info('Writing data to csv');
-		writer.write({ Project: projects[i], Registrations: registrations });
-	}
+			log.info('Writing data to csv');
+			writer.write({ Project: projects[i], Registrations: registrations });
+		}
 	}
 
 	log.info('Done.');
 	writer.end();
 	this.emit('end');
 	log.info('Closed csv stream.');
-	await page.waitFor(10000);
+	await createScreenshot(page, path.join(options.screenshotDir, 'getting_end.png'));
 	browser.close();
 	log.info('Closed browser.');
 }
@@ -196,6 +203,7 @@ BookingSimulator.prototype.bookProjects = async function (inFile, options) {
 	const { page, browser } = await startAndNavigateToProjectTimes(options);
 
 	await page.waitFor(5000);
+	await createScreenshot(page, path.join(options.screenshotDir, 'booking_start.png'));
 
 	for (let i = 0; i < bookingPositions.length; i++) {
 		const element = bookingPositions[i];
@@ -246,6 +254,7 @@ BookingSimulator.prototype.bookProjects = async function (inFile, options) {
 		await page.waitFor(2000);
 
 		log.info('Submitting booking.');
+		await createScreenshot(page, path.join(options.screenshotDir, 'booking_' + (i + 1) + '.png'));
 		await page.click(projektzeitErfassenSelector);
 		await waitForNavigation(page);
 
@@ -260,7 +269,7 @@ BookingSimulator.prototype.bookProjects = async function (inFile, options) {
 
 	log.info('Done.');
 	this.emit('end');
-	await page.waitFor(10000);
+	await createScreenshot(page, path.join(options.screenshotDir, 'booking_end.png'));
 	browser.close();
 	log.info('Closed browser.');
 }
@@ -275,6 +284,7 @@ program
 	.description('Gets all projects and its registrations and writes them in .csv format to <path>.')
 	.option('-v, --verbose', 'Enables verbose logging.')
 	.option('-t, --trace', 'Enables trace logging.')
+	.option('-s, --screenshotDir <screenshotDir>', 'Enables visual logging via screenshots.')
 	.option('-i, --interactive-mode', 'Shows the browser window.')
 	.option('-u, --user-data-dir <userDataDir>', 'Specifies the user data dir for the chromium.')
 	.action((path, options) => {
@@ -291,6 +301,9 @@ program
 		}
 		if (options.userDataDir) {
 			log.info('UserDataDir is: ' + options.userDataDir);
+		}
+		if (options.screenshotDir) {
+			log.info('Enabled screenshots to: ' + options.screenshotDir)
 		}
 		log.info('Getting projects and their registrations and writing them to: ' + path);
 		const bookingSimulator = new BookingSimulator();
@@ -302,6 +315,7 @@ program
 	.description('Books all positions contained in the .csv file at the given [path].')
 	.option('-v, --verbose', 'Enables verbose logging.')
 	.option('-t, --trace', 'Enables trace logging.')
+	.option('-s, --screenshotDir <screenshotDir>', 'Enables visual logging via screenshots.')
 	.option('-i, --interactive-mode', 'Shows the browser window.')
 	.option('-u, --user-data-dir <userDataDir>', 'Specifies the user data dir for the chromium.')
 	.action((path, options) => {
@@ -318,6 +332,9 @@ program
 		}
 		if (options.userDataDir) {
 			log.info('UserDataDir is: ' + options.userDataDir);
+		}
+		if (options.screenshotDir) {
+			log.info('Enabled screenshots to: ' + options.screenshotDir)
 		}
 		log.info('Booking all positions specified in: ' + path);
 		const bookingSimulator = new BookingSimulator();
