@@ -103,19 +103,10 @@ async function startAndNavigateToProjectTimes(options) {
   return { page, browser };
 }
 
-BookingSimulator.prototype.getProjects = async function (outFile, options) {
-	const csvWriter = require('csv-write-stream');
-
+BookingSimulator.prototype.getProjects = async function(outFile, options) {
   const projektSelector = '#ctl00_cphContent_cboProjects_DDD_L_LBT > tbody > tr';
   const projektInputSelector = '#ctl00_cphContent_cboProjects_I';
   const erfassungSelector = '#ctl00_cphContent_cboPSItem_0_DDD_L_LBT > tbody > tr';
-
-	log.info('Setting up csv writer.');
-	const writer = csvWriter({
-		sendHeaders: true,
-		separator: ';'
-	});
-	writer.pipe(fs.createWriteStream(outFile));
 
   const { page, browser } = await startAndNavigateToProjectTimes(options);
 
@@ -130,6 +121,7 @@ BookingSimulator.prototype.getProjects = async function (outFile, options) {
   log.info(projects);
   this.emit('start', projects.length);
 
+  var projectsAndRegistrations = [];
   for (var i = 0; i < projects.length; i++) {
     await page.waitFor(2000);
     log.info('Selecting project ' + (i + 1) + ' of ' + projects.length);
@@ -156,14 +148,19 @@ BookingSimulator.prototype.getProjects = async function (outFile, options) {
     await createScreenshot(page, path.join(options.screenshotDir, 'getting_' + (i + 1) + '.png'));
 
     if (registrations.length > 0) {
-			log.info('Writing data to csv');
-			writer.write({ Project: projects[i], Registrations: registrations });
+      log.info('Writing data to json.');
+      projectsAndRegistrations[i] = { Project: projects[i], Registrations: registrations };
     }
   }
   log.info('Done.');
-	writer.end();
+
+  log.info('Setting up file stream.');
+  var file = fs.createWriteStream(outFile);
+  file.write(JSON.stringify(projectsAndRegistrations));
+  file.end();
+  log.info('Closed file stream.');
   this.emit('end');
-	log.info('Closed csv stream.');
+
   await createScreenshot(page, path.join(options.screenshotDir, 'getting_end.png'));
   browser.close();
   log.info('Closed browser.');
