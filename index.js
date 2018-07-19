@@ -167,25 +167,11 @@ BookingSimulator.prototype.getProjects = async function(outFile, options) {
 };
 
 BookingSimulator.prototype.bookProjects = async function(inFile, options) {
-  const csvReader = require('fast-csv');
-
-  let bookingPositions = [];
-  log.info('Setting up csv reader.');
-  const csvStream = csvReader
-    .fromStream(fs.createReadStream(inFile), {
-      delimiter: ';',
-      headers: true,
-      comment: '#',
-      ignoreEmpty: true
-    })
-    .on('data', async data => {
-      log.info(data);
-      bookingPositions.push(data);
-      log.info('Booking position list now contains: ' + bookingPositions.length);
-    })
-    .on('end', async data => {
-      log.info('No more rows.');
-    });
+  log.info('Setting up file reader.');
+  const contents = fs.readFileSync(inFile);
+  let bookingPositions = JSON.parse(contents);
+  log.debug(bookingPositions);
+  log.info('Booking position list now contains: ' + bookingPositions.length);
 
   const projektInputSelector = '#ctl00_cphContent_cboProjects_I';
   const projektErfassungSelector = '#ctl00_cphContent_cboPSItem_0_I';
